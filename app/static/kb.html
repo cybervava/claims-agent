@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Policy KB Browser</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root { --bg:#F4F6F8; --surface:#fff; --ink:#1B2430; --ink-2:#4A5563; --line:#D3DAE2; --accent:#B5432B; --accent-soft:#F6E4DF; --store:#6B5B2F; --store-soft:#F0EAD8; --azure:#2F6F8F; --azure-soft:#DFEBF1; --ok:#2E7D4F; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141A21; --surface:#1C2430; --ink:#E3E8ED; --ink-2:#A5AFBB; --line:#2E3946; --accent:#E07A62; --accent-soft:#3A251F; --store:#C9B06A; --store-soft:#33301F; --azure:#6FB1D2; --azure-soft:#1E3240; --ok:#6FCF97; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:15px; line-height:1.5; }
+  .top { display:flex; align-items:baseline; gap:1rem; flex-wrap:wrap; padding:1.1rem 1.5rem; border-bottom:1px solid var(--line); background:var(--surface); }
+  .top h1 { margin:0; font-size:1.25rem; font-weight:600; }
+  .top .stats { font-family:"IBM Plex Mono",monospace; font-size:.8rem; color:var(--ink-2); }
+  main { display:grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - 62px); }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  aside { border-right:1px solid var(--line); padding:1rem; background:var(--surface); display:flex; flex-direction:column; gap:1.25rem; }
+  section { padding:1rem 1.5rem; min-width:0; }
+  .label { font-family:"IBM Plex Mono",monospace; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); margin:0 0 .5rem; }
+  .upload { border:1px dashed var(--line); border-radius:6px; padding:.9rem; display:flex; flex-direction:column; gap:.5rem; }
+  .upload.drag { border-color:var(--accent); background:var(--accent-soft); }
+  .upload input[type=file] { font:inherit; font-size:.85rem; color:var(--ink-2); }
+  .upload .row { display:flex; gap:.5rem; }
+  .upload input[type=text] { flex:1; min-width:0; font:inherit; font-size:.85rem; padding:.4rem .55rem; border:1px solid var(--line); border-radius:4px; background:var(--bg); color:var(--ink); }
+  input:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  button.primary { font:inherit; font-weight:500; padding:.5rem .9rem; border:0; border-radius:4px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.primary:disabled { opacity:.55; cursor:progress; }
+  .status { font-family:"IBM Plex Mono",monospace; font-size:.75rem; color:var(--ink-2); min-height:1.2em; }
+  .status.ok { color:var(--ok); } .status.err { color:var(--accent); }
+  .doc { display:block; width:100%; text-align:left; background:none; border:1px solid var(--line); border-radius:4px; padding:.6rem .7rem; margin-bottom:.5rem; cursor:pointer; color:var(--ink); font:inherit; }
+  .doc:hover { border-color:var(--accent); }
+  .doc.active { background:var(--accent-soft); border-color:var(--accent); }
+  .doc .name { font-weight:600; word-break:break-all; }
+  .doc .meta { font-family:"IBM Plex Mono",monospace; font-size:.72rem; color:var(--ink-2); }
+  .toolbar { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; margin-bottom:.75rem; }
+  .toolbar form { display:flex; gap:.5rem; flex:1; min-width:260px; }
+  input[type=search] { flex:1; font:inherit; padding:.5rem .7rem; border:1px solid var(--line); border-radius:4px; background:var(--surface); color:var(--ink); }
+  .toggle { font-size:.85rem; color:var(--ink-2); display:flex; align-items:center; gap:.35rem; white-space:nowrap; }
+  .viewhead { display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap; }
+  button.ghost { font:inherit; font-size:.8rem; background:none; border:1px solid var(--line); color:var(--accent); padding:.25rem .6rem; border-radius:4px; cursor:pointer; }
+  button.ghost:hover { border-color:var(--accent); }
+  .chunk { background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:.8rem 1rem; margin-bottom:.75rem; }
+  .chunk .head { display:flex; justify-content:space-between; gap:1rem; padding-bottom:.4rem; }
+  .chunk .id { font-family:"IBM Plex Mono",monospace; font-size:.75rem; color:var(--store); background:var(--store-soft); padding:.1rem .4rem; border-radius:3px; }
+  .chunk .score { font-family:"IBM Plex Mono",monospace; font-size:.75rem; color:var(--azure); font-variant-numeric:tabular-nums; }
+  .chunk pre { margin:0; white-space:pre-wrap; font-family:inherit; font-size:.9rem; color:var(--ink); }
+  .chunk .tags { font-family:"IBM Plex Mono",monospace; font-size:.7rem; color:var(--ink-2); margin-top:.5rem; }
+  .vec { margin-top:.5rem; font-family:"IBM Plex Mono",monospace; font-size:.72rem; color:var(--azure); background:var(--azure-soft); padding:.35rem .5rem; border-radius:3px; overflow-x:auto; white-space:nowrap; }
+  .empty { color:var(--ink-2); padding:2rem 0; }
+  .error { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Policy KB Browser</h1>
+  <span class="stats" id="stats">loading…</span>
+</div>
+<main>
+  <aside>
+    <div>
+      <p class="label">Upload a policy document</p>
+      <form class="upload" id="upload">
+        <input type="file" id="file" name="file" accept=".pdf,.docx,.txt,.md,.json,.csv" required aria-label="policy file">
+        <div class="row">
+          <input type="text" id="product" placeholder="product (e.g. motor)" aria-label="product">
+          <input type="text" id="version" placeholder="version" aria-label="version">
+        </div>
+        <button class="primary" type="submit" id="upload-btn">Upload &amp; embed</button>
+        <div class="status" id="upload-status">pdf · docx · txt · md · json — max 10 MB</div>
+      </form>
+    </div>
+    <div>
+      <p class="label">Documents</p>
+      <div id="docs"><p class="empty">loading…</p></div>
+    </div>
+  </aside>
+  <section>
+    <div class="toolbar">
+      <form id="search">
+        <input type="search" id="q" placeholder="semantic search, e.g. leaking pipe" aria-label="search query">
+        <button class="primary" type="submit">Search</button>
+      </form>
+      <label class="toggle"><input type="checkbox" id="showvec"> show embedding vectors</label>
+    </div>
+    <div class="viewhead">
+      <p class="label" id="view-label">Select a document or run a search</p>
+      <button class="ghost" id="delete-btn" hidden>Delete this document</button>
+    </div>
+    <div id="chunks"></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const tags = (m) => Object.entries(m).filter(([k]) => !["doc_id","filename","chunk_index"].includes(k)).map(([k,v]) => `${esc(k)}=${esc(v)}`).join("  ");
+let current = null;  // {doc_id, name}
+
+function setStatus(msg, cls) { const el = $("upload-status"); el.textContent = msg; el.className = "status " + (cls || ""); }
+
+function renderChunks(rows, label, withScore) {
+  $("view-label").textContent = label;
+  if (!rows.length) { $("chunks").innerHTML = '<p class="empty">Nothing here.</p>'; return; }
+  $("chunks").innerHTML = rows.map(r => `
+    <article class="chunk">
+      <div class="head"><span class="id">${esc(r.chunk_id)}</span>${withScore ? `<span class="score">score ${Number(r.score).toFixed(4)} · ${esc(r.filename)}</span>` : `<span class="score">#${esc(r.metadata.chunk_index)} · ${r.text.length} chars</span>`}</div>
+      <pre>${esc(r.text)}</pre>
+      <div class="tags">${tags(r.metadata)}</div>
+      ${r.embedding_dims ? `<div class="vec">${r.embedding_dims}-d vector · [${r.embedding_preview.map(v => v.toFixed(5)).join(", ")}, …]</div>` : ""}
+    </article>`).join("");
+}
+
+async function loadDocs(selectId) {
+  try {
+    const data = await (await fetch("/policies")).json();
+    const s = data.stats;
+    $("stats").textContent = `${s.documents} documents · ${s.chunks} chunks · collection "${s.collection}" · ${s.embedding_model}`;
+    if (!data.documents.length) { $("docs").innerHTML = '<p class="empty">No documents yet — upload one above.</p>'; return; }
+    $("docs").innerHTML = data.documents.map(d => `
+      <button class="doc" data-id="${esc(d.doc_id)}" data-name="${esc(d.filename)}">
+        <div class="name">${esc(d.filename)}</div>
+        <div class="meta">${d.chunk_count} chunks · ${esc(d.ingested_at.slice(0,16).replace("T"," "))} · by ${esc(d.ingested_by)}</div>
+        <div class="meta">${tags(d.metadata)}</div>
+      </button>`).join("");
+    document.querySelectorAll(".doc").forEach(b => b.addEventListener("click", () => showDoc(b)));
+    if (selectId) { const b = document.querySelector(`.doc[data-id="${selectId}"]`); if (b) showDoc(b); }
+  } catch (e) { $("docs").innerHTML = `<p class="error">Could not load documents: ${esc(e)}</p>`; }
+}
+
+async function showDoc(btn) {
+  document.querySelectorAll(".doc").forEach(b => b.classList.toggle("active", b === btn));
+  current = { doc_id: btn.dataset.id, name: btn.dataset.name };
+  $("delete-btn").hidden = false;
+  const vec = $("showvec").checked ? "?include_embeddings=true" : "";
+  const res = await fetch(`/policies/${current.doc_id}/chunks${vec}`);
+  if (!res.ok) { $("chunks").innerHTML = `<p class="error">${res.status}: ${esc(await res.text())}</p>`; return; }
+  renderChunks(await res.json(), `${current.name} — chunks in index order`, false);
+}
+
+$("showvec").addEventListener("change", () => { const b = document.querySelector(".doc.active"); if (b) showDoc(b); });
+
+$("search").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const q = $("q").value.trim(); if (!q) return;
+  document.querySelectorAll(".doc").forEach(b => b.classList.remove("active"));
+  current = null; $("delete-btn").hidden = true;
+  $("view-label").textContent = "Embedding query and searching…";
+  const res = await fetch("/policies/search", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ query: q, top_k: 8 }) });
+  if (!res.ok) { $("chunks").innerHTML = `<p class="error">${res.status}: ${esc(await res.text())}</p>`; return; }
+  renderChunks(await res.json(), `Top matches for “${q}” (cosine similarity)`, true);
+});
+
+$("upload").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const file = $("file").files[0]; if (!file) return;
+  const meta = {}; if ($("product").value.trim()) meta.product = $("product").value.trim(); if ($("version").value.trim()) meta.version = $("version").value.trim();
+  const fd = new FormData(); fd.append("file", file); fd.append("metadata", JSON.stringify(meta));
+  $("upload-btn").disabled = true; setStatus(`Uploading ${file.name} and embedding chunks…`);
+  try {
+    const res = await fetch("/policies/ingest", { method: "POST", body: fd, headers: { "x-actor": "kb-ui" } });
+    const body = await res.json();
+    if (!res.ok) { setStatus(`Failed: ${body.detail || res.status}`, "err"); return; }
+    setStatus(body.skipped_duplicate ? `Already indexed (same content) — ${body.chunk_count} chunks` : `Embedded ${body.chunk_count} chunks → ${body.doc_id}`, "ok");
+    $("upload").reset();
+    await loadDocs(body.doc_id);
+  } catch (e) { setStatus(`Failed: ${e}`, "err"); }
+  finally { $("upload-btn").disabled = false; }
+});
+
+$("delete-btn").addEventListener("click", async () => {
+  if (!current || !confirm(`Delete "${current.name}" and its vectors from the KB?`)) return;
+  const res = await fetch(`/policies/${current.doc_id}`, { method: "DELETE", headers: { "x-actor": "kb-ui" } });
+  if (!res.ok) { alert(`Delete failed: ${res.status}`); return; }
+  current = null; $("delete-btn").hidden = true; $("chunks").innerHTML = ""; $("view-label").textContent = "Deleted.";
+  loadDocs();
+});
+
+const up = $("upload");
+["dragenter","dragover"].forEach(e => up.addEventListener(e, ev => { ev.preventDefault(); up.classList.add("drag"); }));
+["dragleave","drop"].forEach(e => up.addEventListener(e, ev => { ev.preventDefault(); up.classList.remove("drag"); }));
+up.addEventListener("drop", ev => { if (ev.dataTransfer.files.length) $("file").files = ev.dataTransfer.files; });
+
+loadDocs();
+</script>
+</body>
+</html>

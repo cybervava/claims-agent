@@ -1,0 +1,20 @@
+{
+  "policy_number": "HC-5510022",
+  "policyholder": "Meera and Sanjay Nair",
+  "insured_address": "14 Lakeview Gardens, Bengaluru",
+  "incident_type": "Burglary",
+  "incident_date": "2026-08-16",
+  "discovered_date": "2026-08-16",
+  "reported_to_insurer": "2026-08-18",
+  "police_report": {"reported": "2026-08-16", "crime_reference": "BLR-2026-081633"},
+  "description": "Returned from a weekend away to find the rear patio door forced open (frame splintered, lock broken). Master bedroom ransacked.",
+  "items": [
+    {"item": "Gold necklace set", "value": 3200, "proof": "jeweller receipt 2024"},
+    {"item": "Sony A7 IV camera", "value": 2100, "proof": "Amazon invoice 2025"},
+    {"item": "MacBook Pro 14", "value": 1900, "proof": "Apple invoice 2025"},
+    {"item": "Cash from drawer", "value": 800, "proof": "none"},
+    {"item": "Patio door repair", "value": 650, "proof": "glazier quote"}
+  ],
+  "total_claimed": 8650,
+  "attachments": ["police report", "photographs of forced door", "receipts", "glazier quote"]
+}
