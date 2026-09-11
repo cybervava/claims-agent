@@ -79,7 +79,7 @@
       const r = await fetch("/rag/ask", { method: "POST", headers: { "Content-Type": "application/json", "x-actor": "rag-ui" },
         body: JSON.stringify({ question: $("q").value.trim(), top_k: Number($("k").value) || 4 }) });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || r.statusText);
+      if (!r.ok) throw new Error(Array.isArray(d.detail) ? d.detail.map(e => `${(e.loc || []).slice(1).join('.')}: ${e.msg}`).join('; ') : (d.detail || r.statusText));
       $("answer").textContent = d.answer;
       $("usage").textContent = `${d.model} · ${d.prompt_tokens} in / ${d.completion_tokens} out · $${d.cost_usd.toFixed(6)} · ${d.latency_ms} ms · run ${d.run_id}`;
       $("sources").replaceChildren(...d.sources.map(s => {

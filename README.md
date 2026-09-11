@@ -84,7 +84,7 @@ curl -X POST localhost:8000/rag/ask -H 'content-type: application/json' \
   -d '{"question":"What is the theft excess on the gadget policy?"}' | jq .answer
 ```
 
-Set `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_API_KEY`, `AZURE_SEARCH_INDEX` and
+Set `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_API_KEY` (a read-only query key is enough), `AZURE_SEARCH_INDEX` and
 `RAG_CHAT_BASE_URL` (plus `RAG_CHAT_API_KEY`) in `.env` to enable it; the
 endpoints return 503 otherwise. Browser UI: `http://localhost:8000/rag`.
 

@@ -187,6 +187,7 @@ def test_rag_ask_endpoint_validates_and_maps_errors(rag_client):
     c, state = rag_client
     assert c.post("/rag/ask", json={"question": ""}).status_code == 422
     assert c.post("/rag/ask", json={"question": "q", "top_k": 0}).status_code == 422
+    assert c.post("/rag/ask", json={"question": "q", "session_id": "s" * 129}).status_code == 422
 
     state["rag"].chat.error = LLMError("empty")
     r = c.post("/rag/ask", json={"question": "q"})
