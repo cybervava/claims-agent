@@ -87,3 +87,29 @@ class ValidateResponse(BaseModel):
     cost_usd: float
     prompt_tokens: int
     completion_tokens: int
+
+
+# ---- RAG (Azure AI Search + gpt-5-mini) ------------------------------------
+class RagAskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    top_k: int | None = Field(default=None, ge=1, le=20)
+    session_id: str | None = None
+
+
+class RagSource(BaseModel):
+    id: str
+    title: str
+    score: float
+    snippet: str
+
+
+class RagAskResponse(BaseModel):
+    run_id: str
+    question: str
+    answer: str
+    sources: list[RagSource]
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    cost_usd: float
+    latency_ms: int

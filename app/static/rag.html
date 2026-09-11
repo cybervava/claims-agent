@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Policy Q&amp;A</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root { --bg:#F4F6F8; --surface:#fff; --ink:#1B2430; --ink-2:#4A5563; --line:#D3DAE2; --accent:#B5432B; --accent-soft:#F6E4DF; --azure:#2F6F8F; --azure-soft:#DFEBF1; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141A21; --surface:#1C2430; --ink:#E3E8ED; --ink-2:#A5AFBB; --line:#2E3946; --accent:#E07A62; --accent-soft:#3A251F; --azure:#6FB1D2; --azure-soft:#1E3240; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:15px; line-height:1.5; }
+  header { display:flex; align-items:baseline; gap:1rem; flex-wrap:wrap; padding:1.1rem 1.5rem; border-bottom:1px solid var(--line); background:var(--surface); }
+  header h1 { margin:0; font-size:1.25rem; font-weight:600; }
+  header .meta { font-family:"IBM Plex Mono",monospace; font-size:.8rem; color:var(--ink-2); }
+  header a { color:var(--azure); margin-left:auto; font-size:.85rem; }
+  main { max-width:900px; margin:0 auto; padding:1.5rem; }
+  form { display:flex; gap:.6rem; flex-wrap:wrap; }
+  textarea { flex:1 1 420px; min-height:72px; padding:.7rem .8rem; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; resize:vertical; }
+  button { padding:.7rem 1.2rem; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; font-weight:500; cursor:pointer; align-self:flex-start; }
+  button:disabled { opacity:.5; cursor:wait; }
+  .row { display:flex; gap:1rem; align-items:center; margin-top:.5rem; font-size:.85rem; color:var(--ink-2); }
+  .row input { width:4rem; padding:.3rem .4rem; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink); font:inherit; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1rem 1.2rem; margin-top:1.2rem; }
+  .card h2 { margin:0 0 .5rem; font-size:.8rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-2); }
+  #answer { white-space:pre-wrap; }
+  .src { border-top:1px solid var(--line); padding:.7rem 0; }
+  .src:first-of-type { border-top:0; }
+  .src .t { font-weight:500; }
+  .src .s { font-family:"IBM Plex Mono",monospace; font-size:.75rem; color:var(--azure); background:var(--azure-soft); padding:.1rem .4rem; border-radius:4px; margin-left:.5rem; }
+  .src .snip { color:var(--ink-2); font-size:.9rem; margin-top:.2rem; }
+  .usage { font-family:"IBM Plex Mono",monospace; font-size:.78rem; color:var(--ink-2); margin-top:.8rem; }
+  .err { color:var(--accent); background:var(--accent-soft); padding:.6rem .8rem; border-radius:8px; margin-top:1rem; }
+  .chips { display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.8rem; }
+  .chips button { background:var(--azure-soft); color:var(--azure); padding:.3rem .7rem; font-size:.82rem; font-weight:400; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Policy Q&amp;A</h1>
+  <span class="meta" id="meta">Azure AI Search · gpt-5-mini</span>
+  <a href="/docs">API docs</a>
+</header>
+<main>
+  <form id="f">
+    <textarea id="q" placeholder="e.g. What is the theft excess on the gadget policy?" required></textarea>
+    <button id="go" type="submit">Ask</button>
+  </form>
+  <div class="row"><label>Top documents <input id="k" type="number" min="1" max="20" value="4"></label></div>
+  <div class="chips" id="chips"></div>
+  <div id="out" hidden>
+    <div class="card"><h2>Answer</h2><div id="answer"></div><div class="usage" id="usage"></div></div>
+    <div class="card"><h2>Sources</h2><div id="sources"></div></div>
+  </div>
+  <div class="err" id="err" hidden></div>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  const examples = [
+    "What is the theft excess on the gadget policy?",
+    "How long do I have to report a pet insurance claim?",
+    "Does travel cover include scuba diving?",
+    "What is the time excess for business interruption?",
+  ];
+  for (const ex of examples) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = ex;
+    b.onclick = () => { $("q").value = ex; $("f").requestSubmit(); };
+    $("chips").appendChild(b);
+  }
+  fetch("/health").then(r => r.json()).then(h => {
+    if (h.rag && !h.rag.enabled) { $("err").hidden = false; $("err").textContent = "RAG is not configured on this server."; }
+    else if (h.rag) { $("meta").textContent = `index ${h.rag.index} · ${h.rag.model}`; }
+  }).catch(() => {});
+  $("f").addEventListener("submit", async e => {
+    e.preventDefault();
+    $("go").disabled = true; $("err").hidden = true; $("out").hidden = true;
+    try {
+      const r = await fetch("/rag/ask", { method: "POST", headers: { "Content-Type": "application/json", "x-actor": "rag-ui" },
+        body: JSON.stringify({ question: $("q").value.trim(), top_k: Number($("k").value) || 4 }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || r.statusText);
+      $("answer").textContent = d.answer;
+      $("usage").textContent = `${d.model} · ${d.prompt_tokens} in / ${d.completion_tokens} out · $${d.cost_usd.toFixed(6)} · ${d.latency_ms} ms · run ${d.run_id}`;
+      $("sources").replaceChildren(...d.sources.map(s => {
+        const div = document.createElement("div"); div.className = "src";
+        const t = document.createElement("div"); t.className = "t"; t.textContent = s.title;
+        const sc = document.createElement("span"); sc.className = "s"; sc.textContent = `score ${s.score}`; t.appendChild(sc);
+        const sn = document.createElement("div"); sn.className = "snip"; sn.textContent = s.snippet;
+        div.append(t, sn); return div;
+      }));
+      $("out").hidden = false;
+    } catch (ex) { $("err").hidden = false; $("err").textContent = ex.message; }
+    finally { $("go").disabled = false; }
+  });
+</script>
+</body>
+</html>

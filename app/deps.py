@@ -8,6 +8,8 @@ from .config import Settings
 from .db import Database
 from .llm import LLMClient
 from .prompts import PromptStore
+from .rag import RagChat, RagService
+from .search import AzureSearchClient
 from .vectorstore import PolicyStore
 
 
@@ -19,6 +21,15 @@ class AppContext:
     prompts: PromptStore
     store: PolicyStore
     agent: ClaimAgent
+    rag: RagService | None
+
+
+def build_rag(settings: Settings, prompts: PromptStore, db: Database) -> RagService | None:
+    if not settings.rag_enabled:
+        return None
+    search = AzureSearchClient(settings.azure_search_endpoint, settings.azure_search_index,
+                               settings.azure_search_api_key, api_version=settings.azure_search_api_version)
+    return RagService(settings, search, RagChat(settings, db), prompts, db)
 
 
 def build_context(settings: Settings) -> AppContext:
@@ -27,7 +38,8 @@ def build_context(settings: Settings) -> AppContext:
     prompts = PromptStore(settings.prompts_dir)
     store = PolicyStore(settings, llm, db)
     agent = ClaimAgent(settings, llm, store, prompts, db)
-    return AppContext(settings, db, llm, prompts, store, agent)
+    rag = build_rag(settings, prompts, db)
+    return AppContext(settings, db, llm, prompts, store, agent, rag)
 
 
 def get_ctx(request: Request) -> AppContext:

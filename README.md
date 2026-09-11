@@ -9,6 +9,7 @@ Validates an uploaded claim file against a policy knowledge base.
 | Vector KB | ChromaDB (persistent, cosine) — `data/chroma/` |
 | Memory, runs/steps, cost ledger, audit log, doc registry | one SQLite DB — `data/claims_agent.db` |
 | Prompts | external Markdown templates in `prompts/` (content-hash versioned per run) |
+| Policy Q&A (RAG) | Azure AI Search keyword index over Blob Storage PDFs + `gpt-5-mini` — `/rag/ask`, UI at `/rag` |
 
 ## Agent flow (`POST /claims/validate`)
 
@@ -44,6 +45,8 @@ docker run -p 8000:8000 --env-file .env -v $PWD/data:/srv/data claims-agent
 | POST | `/policies/search` | `{query, top_k, where}` semantic search |
 | GET | `/policies` | KB stats + document registry |
 | DELETE | `/policies/{doc_id}` | remove document + its vectors |
+| POST | `/rag/ask` | `{question, top_k?}` → keyword-retrieve from Azure AI Search, answer with gpt-5-mini, cite sources |
+| POST | `/rag/search` | same body → raw Azure AI Search hits (no LLM) |
 | POST | `/claims/validate` | multipart `file` (+ `session_id`) → adjudication |
 | POST | `/claims/validate-text` | `{claim_text, session_id}` |
 | GET | `/claims/runs`, `/claims/runs/{run_id}` | run history incl. steps + LLM calls |
@@ -65,6 +68,31 @@ curl -X POST localhost:8000/claims/validate -H 'x-actor: me' \
   -F file=@sample_data/claims/claim_motor_valid.txt -F session_id=priya-MC-2041877 | jq .validation
 
 curl localhost:8000/costs | jq .total
+```
+
+## Policy Q&A over Azure AI Search (RAG)
+
+Policy PDFs live in Azure Blob Storage and are indexed by an Azure AI Search
+indexer ("connect to data", keyword search). `/rag/ask` runs a simple query
+against that index, passes the top documents to `gpt-5-mini` via the
+OpenAI-v1-compatible Foundry endpoint, and returns an answer that cites the
+source file names. Each question is recorded as a `policy-rag` run with steps,
+LLM cost and an audit row, alongside the claim-agent runs.
+
+```bash
+curl -X POST localhost:8000/rag/ask -H 'content-type: application/json' \
+  -d '{"question":"What is the theft excess on the gadget policy?"}' | jq .answer
+```
+
+Set `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_API_KEY`, `AZURE_SEARCH_INDEX` and
+`RAG_CHAT_BASE_URL` (plus `RAG_CHAT_API_KEY`) in `.env` to enable it; the
+endpoints return 503 otherwise. Browser UI: `http://localhost:8000/rag`.
+
+## Deploy to a VM (Docker Compose)
+
+```bash
+docker compose up -d --build      # reads .env, persists SQLite/Chroma in ./data
+docker compose logs -f
 ```
 
 ## Tests

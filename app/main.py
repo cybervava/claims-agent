@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 
 from .config import Settings, get_settings
 from .deps import build_context
-from .routers import admin, claims, policies
+from .routers import admin, claims, policies, rag
 
 logger = logging.getLogger("claims_agent")
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -22,8 +22,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.ctx = build_context(settings)
-        logger.info("claims-agent ready: chat=%s embed=%s db=%s", settings.chat_deployment,
-                    settings.embedding_deployment, settings.sqlite_path)
+        logger.info("claims-agent ready: chat=%s embed=%s db=%s rag=%s", settings.chat_deployment,
+                    settings.embedding_deployment, settings.sqlite_path,
+                    settings.rag_chat_model if settings.rag_enabled else "disabled")
         yield
         app.state.ctx.db.close()
 
@@ -52,14 +53,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def health() -> dict:
         ctx = app.state.ctx
         return {"status": "ok", "chat_model": settings.chat_deployment,
-                "embedding_model": settings.embedding_deployment, "kb": ctx.store.stats()}
+                "embedding_model": settings.embedding_deployment, "kb": ctx.store.stats(),
+                "rag": {"enabled": settings.rag_enabled, "model": settings.rag_chat_model,
+                        "index": settings.azure_search_index or None}}
 
     @app.get("/kb", include_in_schema=False)
     def kb_browser() -> FileResponse:
         return FileResponse(STATIC_DIR / "kb.html", media_type="text/html")
 
+    @app.get("/rag", include_in_schema=False)
+    def rag_ui() -> FileResponse:
+        return FileResponse(STATIC_DIR / "rag.html", media_type="text/html")
+
     app.include_router(policies.router)
     app.include_router(claims.router)
+    app.include_router(rag.router)
     app.include_router(admin.router)
     return app
 

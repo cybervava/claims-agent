@@ -5,6 +5,7 @@ import os
 _DEFAULT_PRICES: dict[str, dict[str, float]] = {
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gpt-5-mini": {"input": 0.25, "output": 2.00},
     "text-embedding-3-small": {"input": 0.02, "output": 0.0},
     "text-embedding-3-large": {"input": 0.13, "output": 0.0},
 }

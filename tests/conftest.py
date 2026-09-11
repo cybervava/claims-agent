@@ -59,7 +59,7 @@ class FakeLLM:
 
 @pytest.fixture
 def settings(tmp_path) -> Settings:
-    return Settings(azure_openai_endpoint="https://fake.example", azure_openai_api_key="x",
+    return Settings(_env_file=None, azure_openai_endpoint="https://fake.example", azure_openai_api_key="x",
                     sqlite_path=tmp_path / "t.db", chroma_path=tmp_path / "chroma",
                     chunk_size=200, chunk_overlap=20, retrieval_top_k=4)
 
